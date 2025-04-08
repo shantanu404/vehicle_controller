@@ -1,7 +1,8 @@
 MPC based Vehicle Control System
 ================================
 Developed for lane following applications and ADAS using monocular vision
-    - dependencies
-        - mvsim
-        - ros2 jazzy
-        - ubuntu 24.04
+
+- dependencies
+    - mvsim
+    - ros2 jazzy
+    - ubuntu 24.04
