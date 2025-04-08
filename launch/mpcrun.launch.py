@@ -43,10 +43,25 @@ def generate_launch_description():
         output='screen'
     )
 
+    # Run rviz2 node
+    rviz_conf_path = PathJoinSubstitution([
+        FindPackageShare('vehicle_controller'),
+        'launch',
+        'demo.rviz'
+    ])
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2_mpc_controller',
+        arguments=['-d', [ rviz_conf_path ]]
+    )
+
     return LaunchDescription([
         world_file_arg,
         headless_arg,
         mvsim_node,
-        mpc_node
+        mpc_node,
+        rviz_node
     ])
 
