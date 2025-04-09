@@ -1,38 +1,43 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 def generate_launch_description():
-    # Declare the world_file argument
-    world_file_arg = DeclareLaunchArgument(
+    # Declare simulation world file option
+    simulation_world_file_arg = DeclareLaunchArgument(
         'world_file',
         default_value=PathJoinSubstitution([
             FindPackageShare('vehicle_controller'),
+            'resources',
             'worlds',
             'demo_camera.world.xml'
         ]),
         description='Path to the world file'
     )
 
-    # Declare the headless argument
-    headless_arg = DeclareLaunchArgument(
+    # Declare simulation headless argument
+    simulation_headless_arg = DeclareLaunchArgument(
         'headless',
         default_value='True',
         description='Should run mvsim headlessly or not'
     )
 
-    # Launch the mvsim_node
-    mvsim_node = Node(
-        package='mvsim',
-        executable='mvsim_node',
-        name='mvsim_simulator',
-        output='screen',
-        parameters=[{
+    # Include simulation launch file
+    simulation_launch_path = PathJoinSubstitution([
+        FindPackageShare('vehicle_controller'),
+        'launch',
+        'simulation.launch.py'
+    ])
+
+    include_simulation_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(simulation_launch_path),
+        launch_arguments={
             'world_file': LaunchConfiguration('world_file'),
             'headless': LaunchConfiguration('headless')
-        }]
+        }.items()
     )
 
     # Declare the speed argument
@@ -53,26 +58,11 @@ def generate_launch_description():
         }]
     )
 
-    # Run rviz2 node
-    rviz_conf_path = PathJoinSubstitution([
-        FindPackageShare('vehicle_controller'),
-        'launch',
-        'demo.rviz'
-    ])
-
-    rviz_node = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2_mpc_controller',
-        arguments=['-d', [ rviz_conf_path ]]
-    )
-
     return LaunchDescription([
-        world_file_arg,
-        headless_arg,
-        mvsim_node,
+        simulation_world_file_arg,
+        simulation_headless_arg,
+        include_simulation_launch,
         mpc_speed_arg,
-        mpc_node,
-        rviz_node
+        mpc_node
     ])
 

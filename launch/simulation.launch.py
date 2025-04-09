@@ -10,10 +10,18 @@ def generate_launch_description():
         'world_file',
         default_value=PathJoinSubstitution([
             FindPackageShare('vehicle_controller'),
+            'resources',
             'worlds',
             'demo_camera.world.xml'
         ]),
         description='Path to the world file'
+    )
+
+    # Declare the headless argument
+    headless_arg = DeclareLaunchArgument(
+        'headless',
+        default_value='False',
+        description='Should run mvsim headlessly or not'
     )
 
     # Launch the mvsim_node
@@ -22,11 +30,31 @@ def generate_launch_description():
         executable='mvsim_node',
         name='mvsim_simulator',
         output='screen',
-        parameters=[{'world_file': LaunchConfiguration('world_file')}]
+        parameters=[{
+            'world_file': LaunchConfiguration('world_file'),
+            'headless': LaunchConfiguration('headless')
+        }]
+    )
+
+    # Run rviz2 node
+    rviz_conf_path = PathJoinSubstitution([
+        FindPackageShare('vehicle_controller'),
+        'resources',
+        'config',
+        'demo.rviz'
+    ])
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2_mpc_controller',
+        arguments=['-d', [ rviz_conf_path ]]
     )
 
     return LaunchDescription([
         world_file_arg,
-        mvsim_node
+        headless_arg,
+        mvsim_node,
+        rviz_node
     ])
 
