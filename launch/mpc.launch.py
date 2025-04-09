@@ -13,7 +13,7 @@ def generate_launch_description():
             FindPackageShare('vehicle_controller'),
             'resources',
             'worlds',
-            'demo_camera.world.xml'
+            'track00.world.xml'
         ]),
         description='Path to the world file'
     )
