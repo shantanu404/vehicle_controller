@@ -14,6 +14,10 @@ public:
   MPCControllerNode()
   : Node("mpc")
   {
+    auto vel_param_desc = rcl_interfaces::msg::ParameterDescriptor{};
+    vel_param_desc.description = "This controls the forward velocity of the vehicle";
+    this->declare_parameter("velocity", 2.5, vel_param_desc);
+
     image_subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
       "/camera1/image_raw",
       10,
@@ -110,7 +114,7 @@ private:
 
   void cmdCallback() {
     geometry_msgs::msg::Twist cmd_vel;
-    cmd_vel.linear.x = 5.0;
+    cmd_vel.linear.x = this->get_parameter("velocity").as_double();
     cmd_vel.angular.z = ((error * 90.0)/400)/15;
 
     cmd_vel_pub_->publish(cmd_vel);

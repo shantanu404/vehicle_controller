@@ -35,12 +35,22 @@ def generate_launch_description():
         }]
     )
 
+    # Declare the speed argument
+    mpc_speed_arg = DeclareLaunchArgument(
+        'velocity',
+        default_value='2.5',
+        description='Set the velocity of vehicle'
+    )
+
     # Run mpc node
     mpc_node = Node(
         package='vehicle_controller',
         executable='mpc',
         name='mpc_controller',
-        output='screen'
+        output='screen',
+        parameters=[{
+            'velocity' : LaunchConfiguration('velocity')
+        }]
     )
 
     # Run rviz2 node
@@ -61,6 +71,7 @@ def generate_launch_description():
         world_file_arg,
         headless_arg,
         mvsim_node,
+        mpc_speed_arg,
         mpc_node,
         rviz_node
     ])
