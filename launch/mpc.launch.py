@@ -58,11 +58,20 @@ def generate_launch_description():
         }]
     )
 
+    # Run odometry plotter
+    odom_plotter_node = Node(
+        package='vehicle_controller',
+        executable='odometry_plotter.py',
+        name='odometry_plotter',
+        output='screen'
+    )
+
     return LaunchDescription([
         simulation_world_file_arg,
         simulation_headless_arg,
         include_simulation_launch,
         mpc_speed_arg,
-        mpc_node
+        mpc_node,
+        odom_plotter_node
     ])
 

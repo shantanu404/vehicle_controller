@@ -7,7 +7,10 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclpy REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(cv_bridge REQUIRED)
@@ -26,7 +29,13 @@ ament_target_dependencies(
   "cv_bridge"
 )
 
+ament_python_install_package(${PROJECT_NAME})
+
 install(TARGETS mpc
+  DESTINATION lib/${PROJECT_NAME})
+
+install(PROGRAMS
+  scripts/odometry_plotter.py
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch
