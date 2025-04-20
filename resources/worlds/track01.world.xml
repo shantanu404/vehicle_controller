@@ -21,15 +21,15 @@
   </lights>
 
   <element class="horizontal_plane">
-    <x_min>-15</x_min>
-    <y_min>-15</y_min>
-    <x_max>15</x_max>
-    <y_max>15</y_max>
+    <x_min>-64</x_min>
+    <y_min>-64</y_min>
+    <x_max>64</x_max>
+    <y_max>64</y_max>
     <z>0.00</z>
 
     <texture>track01.png</texture>
-    <texture_size_x>30.0</texture_size_x>
-    <texture_size_y>30.0</texture_size_y>
+    <texture_size_x>128.0</texture_size_x>
+    <texture_size_y>128.0</texture_size_y>
   </element>
 
   <!-- A SkyBox decoration -->
@@ -50,7 +50,7 @@
        Vehicle(s) definition
        ======================== -->
   <vehicle name="ego" class="car_ackermann">
-    <init_pose>0 13 0</init_pose>  <!-- In global coords: x,y, yaw(deg) -->
+    <init_pose>0 -46 135</init_pose>  <!-- In global coords: x,y, yaw(deg) -->
 
     <!-- Sensors -->
     <include file="../definitions/camera.sensor.xml"
