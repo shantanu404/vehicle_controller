@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 
+import csv
 import os
 import threading
-import rclpy
-from rclpy.node import Node
-from rclpy.executors import MultiThreadedExecutor, ExternalShutdownException
-from nav_msgs.msg import Odometry
-import matplotlib.pyplot as plt
+
 import matplotlib.animation as anim  # Import FuncAnimation
+import matplotlib.pyplot as plt
 import numpy as np
-import csv
+import rclpy
+from nav_msgs.msg import Odometry
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.node import Node
 from tf_transformations import euler_from_quaternion
-import sys
 
 
 class OdometryPlotterNode(Node):
     def __init__(self):
         # Initialize the ROS 2 node
-        super().__init__('odometry_plotter')
+        super().__init__("odometry_plotter")
 
         # Initialize data lists
         self.x_data = []
@@ -27,35 +27,36 @@ class OdometryPlotterNode(Node):
         self.w_data = []
         self.times = []
         self._lock = threading.Lock()
-        self.csv_file_path = os.path.join(os.getenv('HOME'), '.ros/odometry_data.csv')
+        self.csv_file_path = os.path.join(
+            os.getenv("HOME", ""), ".ros/odometry_data.csv"
+        )
         self.animation_interval = 100
 
         # Set up the Matplotlib figure and axes (5 subplots)
-        self.fig, self.ax = plt.subplots(5, 1, figsize=(10, 12))  # Adjust figure size as needed
-        self.xpoints, = self.ax[0].plot([], [], 'r-')
-        self.ypoints, = self.ax[1].plot([], [], 'r-')
-        self.opoints, = self.ax[2].plot([], [], 'r-')
-        self.vpoints, = self.ax[3].plot([], [], 'r-')
-        self.wpoints, = self.ax[4].plot([], [], 'r-')
+        self.fig, self.ax = plt.subplots(
+            5, 1, figsize=(10, 12)
+        )  # Adjust figure size as needed
+        (self.xpoints,) = self.ax[0].plot([], [], "r-")
+        (self.ypoints,) = self.ax[1].plot([], [], "r-")
+        (self.opoints,) = self.ax[2].plot([], [], "r-")
+        (self.vpoints,) = self.ax[3].plot([], [], "r-")
+        (self.wpoints,) = self.ax[4].plot([], [], "r-")
 
         for a in self.ax:
-            a.set_xlabel('Time (s)')
+            a.set_xlabel("Time (s)")
             a.grid(True)
 
-        self.ax[0].set_ylabel('X Coordinate (m)')
-        self.ax[1].set_ylabel('Y Coordinate (m)')
-        self.ax[2].set_ylabel('Yaw (rad)')
-        self.ax[3].set_ylabel('Speed (m/s)')
-        self.ax[4].set_ylabel('Angular velocity (rad/s)')
-        self.fig.suptitle('Robot Odometry')
+        self.ax[0].set_ylabel("X Coordinate (m)")
+        self.ax[1].set_ylabel("Y Coordinate (m)")
+        self.ax[2].set_ylabel("Yaw (rad)")
+        self.ax[3].set_ylabel("Speed (m/s)")
+        self.ax[4].set_ylabel("Angular velocity (rad/s)")
+        self.fig.suptitle("Robot Odometry")
 
         self.odom_subscription = self.create_subscription(
-            Odometry,
-            '/base_pose_ground_truth',
-            self.odom_callback,
-            qos_profile=2
+            Odometry, "/base_pose_ground_truth", self.odom_callback, qos_profile=2
         )
-        self.get_logger().info("OdometryPlotter initialized.  Subscribed to /base_pose_ground_truth topic.")
+        self.get_logger().info("Subscribed to /base_pose_ground_truth topic.")
 
         # Initialize FuncAnimation
         self.ani = anim.FuncAnimation(
@@ -71,7 +72,13 @@ class OdometryPlotterNode(Node):
         y = msg.pose.pose.position.y
         q = msg.pose.pose.orientation
         _, _, o = euler_from_quaternion((q.x, q.y, q.z, q.w))
-        v = np.linalg.norm((msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z))
+        v = np.linalg.norm(
+            (
+                msg.twist.twist.linear.x,
+                msg.twist.twist.linear.y,
+                msg.twist.twist.linear.z,
+            )
+        )
         w = msg.twist.twist.angular.z
         timestamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
 
@@ -84,7 +91,7 @@ class OdometryPlotterNode(Node):
             self.w_data.append(w)
             self.times.append(timestamp)
 
-    def update_plot(self, frame):
+    def update_plot(self, _):
         # Get the data and convert to numpy arrays *within* the lock
         with self._lock:
             t_data_n = np.array(self.times)
@@ -152,14 +159,29 @@ class OdometryPlotterNode(Node):
             self.wpoints,
         )  # Return the updated plot elements
 
-
     def write_to_csv(self):
-        with open(self.csv_file_path, 'w') as csvfile:
+        with open(self.csv_file_path, "w") as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['Time', 'X', 'Y', 'Yaw', 'Velocity', 'Angular Velocity'])
-            min_length = min(len(self.times), len(self.x_data), len(self.y_data), len(self.o_data), len(self.v_data), len(self.w_data))
+            writer.writerow(["Time", "X", "Y", "Yaw", "Velocity", "Angular Velocity"])
+            min_length = min(
+                len(self.times),
+                len(self.x_data),
+                len(self.y_data),
+                len(self.o_data),
+                len(self.v_data),
+                len(self.w_data),
+            )
             for i in range(min_length):
-                writer.writerow([self.times[i], self.x_data[i], self.y_data[i], self.o_data[i], self.v_data[i], self.w_data[i]])
+                writer.writerow(
+                    [
+                        self.times[i],
+                        self.x_data[i],
+                        self.y_data[i],
+                        self.o_data[i],
+                        self.v_data[i],
+                        self.w_data[i],
+                    ]
+                )
 
     def _plt(self):
         plt.show()
@@ -168,12 +190,11 @@ class OdometryPlotterNode(Node):
         self.write_to_csv()
 
 
-
 def main(args=None):
     rclpy.init(args=args)
     node = OdometryPlotterNode()
 
-    executor = rclpy.executors.MultiThreadedExecutor()
+    executor = MultiThreadedExecutor()
     executor.add_node(node)
 
     thread = threading.Thread(target=executor.spin, daemon=True)
@@ -181,6 +202,6 @@ def main(args=None):
 
     node._plt()
 
-if __name__ == '__main__':
-    main()
 
+if __name__ == "__main__":
+    main()

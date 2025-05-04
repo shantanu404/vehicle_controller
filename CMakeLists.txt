@@ -15,13 +15,13 @@ find_package(sensor_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(cv_bridge REQUIRED)
 
-add_executable(mpc src/mpc.cpp)
-target_include_directories(mpc PUBLIC
+add_executable(pid_control src/pid_control.cpp)
+target_include_directories(pid_control PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
-target_compile_features(mpc PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(pid_control PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 ament_target_dependencies(
-  mpc
+  pid_control
   "rclcpp"
   "sensor_msgs"
   "geometry_msgs"
@@ -31,7 +31,7 @@ ament_target_dependencies(
 
 ament_python_install_package(${PROJECT_NAME})
 
-install(TARGETS mpc
+install(TARGETS pid_control
   DESTINATION lib/${PROJECT_NAME})
 
 install(PROGRAMS

@@ -8,11 +8,11 @@
 
 using namespace std::chrono_literals;
 
-class MPCControllerNode : public rclcpp::Node
+class PIDControllerNode : public rclcpp::Node
 {
 public:
-  MPCControllerNode()
-  : Node("mpc")
+  PIDControllerNode()
+  : Node("pid_controller")
   {
     auto vel_param_desc = rcl_interfaces::msg::ParameterDescriptor{};
     vel_param_desc.description = "This controls the forward velocity of the vehicle";
@@ -21,15 +21,15 @@ public:
     image_subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
       "/camera1/image_raw",
       10,
-      std::bind(&MPCControllerNode::imageCallback, this, std::placeholders::_1));
+      std::bind(&PIDControllerNode::imageCallback, this, std::placeholders::_1));
 
     cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
-    update_timer_ = this->create_wall_timer(10ms, std::bind(&MPCControllerNode::cmdCallback, this));
+    update_timer_ = this->create_wall_timer(10ms, std::bind(&PIDControllerNode::cmdCallback, this));
 
     cv::namedWindow(OPENCV_WINDOW, cv::WINDOW_NORMAL);
   }
 
-  ~MPCControllerNode() override
+  ~PIDControllerNode() override
   {
     cv::destroyWindow(OPENCV_WINDOW);
   }
@@ -121,12 +121,12 @@ private:
   }
 };
 
-const std::string MPCControllerNode::OPENCV_WINDOW = "Image View";
+const std::string PIDControllerNode::OPENCV_WINDOW = "Image View";
 
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<MPCControllerNode>());
+  rclcpp::spin(std::make_shared<PIDControllerNode>());
   rclcpp::shutdown();
   return 0;
 }
