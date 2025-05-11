@@ -54,9 +54,7 @@
 
     <!-- Sensors -->
     <include file="../definitions/camera.sensor.xml"
-      sensor_x="2.00" sensor_z="0.83"
-      ncols="800" nrows="600"
-      cx="400" cy="300"
+      sensor_x="2.00" sensor_z="0.83" sensor_roll="-120"
       sensor_period_sec="0.10"
     />
   </vehicle>

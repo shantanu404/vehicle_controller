@@ -27,7 +27,7 @@
     <y_max>64</y_max>
     <z>0.00</z>
 
-    <texture>track01.png</texture>
+    <texture>calibration.png</texture>
     <texture_size_x>128.0</texture_size_x>
     <texture_size_y>128.0</texture_size_y>
   </element>
@@ -50,7 +50,7 @@
        Vehicle(s) definition
        ======================== -->
   <vehicle name="ego" class="car_ackermann">
-    <init_pose>0 -46 135</init_pose>  <!-- In global coords: x,y, yaw(deg) -->
+    <init_pose>0 0 0</init_pose>  <!-- In global coords: x,y, yaw(deg) -->
 
     <!-- Sensors -->
     <include file="../definitions/camera.sensor.xml"

@@ -35,7 +35,7 @@ install(TARGETS pid_control
   DESTINATION lib/${PROJECT_NAME})
 
 install(PROGRAMS
-  scripts/odometry_plotter.py
+  scripts/odometry_plotter.py scripts/mpc_control.py
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch
