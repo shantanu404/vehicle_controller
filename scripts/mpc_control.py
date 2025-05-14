@@ -2,10 +2,12 @@
 import cv2
 import numpy as np
 import rclpy
+from builtin_interfaces.msg import Duration
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
 from sensor_msgs.msg import Image
+from visualization_msgs.msg import Marker, MarkerArray
 
 
 class MPCControllerNode(Node):
@@ -27,14 +29,19 @@ class MPCControllerNode(Node):
             dtype=np.float32,
         )
 
+        # Marker array for lane markers
+        self.lane_points = np.array([])
+
         # Subscribers and publishers
         self.image_sub = self.create_subscription(
-            Image, "/camera1/image_raw", self.image_callback, 10
+            Image, "/camera1/image_raw", self.image_callback, 1
         )
-        self.cmd_pub = self.create_publisher(Twist, "cmd_vel", 10)
+        self.cmd_pub = self.create_publisher(Twist, "cmd_vel", 1)
+        self.marker_pub = self.create_publisher(MarkerArray, "lane_markers", 1)
 
         # Timer for publishing commands
         self.create_timer(0.01, self.cmd_timer_callback)
+        self.create_timer(1, self.marker_timer_callback)
 
         # OpenCV windows for debugging
         for win in ["Original", "HSV_V", "Binary", "Morphed", "Warped", "Windows"]:
@@ -81,7 +88,7 @@ class MPCControllerNode(Node):
 
         left_lane_inds, right_lane_inds = [], []
 
-        output = cv2.cvtColor(morphed, cv2.COLOR_GRAY2BGR)
+        output = warped
         for window in range(1, nwindows):
             y_low = h - (window + 1) * window_height
             y_high = h - window * window_height
@@ -105,6 +112,7 @@ class MPCControllerNode(Node):
                 & (nonzerox >= x_left_low)
                 & (nonzerox < x_left_high)
             ).nonzero()[0]
+
             good_right = (
                 (nonzeroy >= y_low)
                 & (nonzeroy < y_high)
@@ -130,20 +138,43 @@ class MPCControllerNode(Node):
         rightx = nonzerox[right_lane_inds]
         righty = nonzeroy[right_lane_inds]
 
+        # Generate rviz markers for left and right lane
+        bias = 1.75 + window_height / 63.297478
+        real_left_x = (w / 2 - leftx) / 53.735893
+        real_left_y = (h - lefty) / 63.297478 + bias
+        real_right_x = (w / 2 - rightx) / 53.735893
+        real_right_y = (h - righty) / 63.297478 + bias
+
+        self.lane_points = np.concatenate(
+            [
+                np.stack([real_left_y, real_left_x], axis=1),
+                np.stack([real_right_y, real_right_x], axis=1),
+            ],
+            axis=0,
+        )
+
         # 6. Fit 2nd-degree (quadratic) polynomials
-        left_fit = np.polyfit(lefty, leftx, 2)
-        right_fit = np.polyfit(righty, rightx, 2)
+        left_fit = np.polyfit(lefty, leftx, 3)
+        right_fit = np.polyfit(righty, rightx, 3)
         mid_fit = (left_fit + right_fit) / 2
 
         # 7. Project midpoint back at the bottom of image (y = h)
         y_eval = h - 25
-        # mid_fit = [A, B, C] for Ax^2 + Bx + C
-        mid_x = mid_fit[0] * y_eval**2 + mid_fit[1] * y_eval + mid_fit[2]
+        mid_x = (
+            mid_fit[0] * y_eval**3
+            + mid_fit[1] * y_eval**2
+            + mid_fit[2] * y_eval
+            + mid_fit[3]
+        )
 
         # 8. Compute error (pixels) relative to image center
         image_center = w / 2
         self.error_ = float(image_center - mid_x)
 
+        # 9. Unwarp the output and show it
+        output = cv2.warpPerspective(
+            output, np.linalg.inv(self.mtx), (640, 480), flags=cv2.INTER_LINEAR
+        )
         cv2.imshow("Windows", output)
         cv2.waitKey(1)
 
@@ -153,8 +184,40 @@ class MPCControllerNode(Node):
         cmd = Twist()
         cmd.linear.x = vel
         cmd.angular.z = self.error_ / (4 * np.pi)
-        self.get_logger().info(f"Lane error: {self.error_:.1f}px")
+        # self.get_logger().info(f"Lane error: {self.error_:.1f}px")
         self.cmd_pub.publish(cmd)
+
+    def marker_timer_callback(self):
+        markers = []
+
+        for i, (x, y) in enumerate(self.lane_points):
+            marker = Marker()
+            marker.header.frame_id = "base_footprint"
+            marker.header.stamp = self.get_clock().now().to_msg()
+
+            marker.ns = "lane_marker"
+            marker.id = i
+            marker.type = Marker.SPHERE
+
+            marker.pose.position.x = x
+            marker.pose.position.y = y
+            marker.pose.orientation.w = 1.0
+
+            marker.scale.x = 0.1
+            marker.scale.y = 0.1
+            marker.scale.z = 0.1
+
+            marker.color.r = 1.0
+            marker.color.g = 0.0
+            marker.color.b = 0.0
+            marker.color.a = 1.0
+
+            marker.lifetime = Duration(seconds=0)
+
+            markers.append(marker)
+
+        marker_array = MarkerArray(markers=markers)
+        self.marker_pub.publish(marker_array)
 
 
 def main(args=None):

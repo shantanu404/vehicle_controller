@@ -4,7 +4,9 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Odometry1
+        - /Global Options1
+        - /MarkerArray2
+        - /MarkerArray2/Topic1
       Splitter Ratio: 0.5
     Tree Height: 385
   - Class: rviz_common/Selection
@@ -168,6 +170,19 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /camera1/image_raw
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MarkerArray
+      Namespaces:
+        left_lane: true
+        right_lane: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /lane_markers
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -214,7 +229,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 48.32848358154297
+      Distance: 63.07958984375
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -229,10 +244,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.30039864778518677
+      Pitch: 0.155398428440094
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.995397925376892
+      Yaw: 4.805411338806152
     Saved: ~
 Window Geometry:
   Displays:
