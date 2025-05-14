@@ -37,7 +37,7 @@ class MPCControllerNode(Node):
         self.create_timer(0.01, self.cmd_timer_callback)
 
         # OpenCV windows for debugging
-        for win in ["Original", "Warped", "HSV_V", "Binary", "Morphed", "Windows"]:
+        for win in ["Original", "HSV_V", "Binary", "Morphed", "Warped", "Windows"]:
             cv2.namedWindow(win, cv2.WINDOW_NORMAL)
 
     def image_callback(self, msg: Image):
@@ -70,10 +70,10 @@ class MPCControllerNode(Node):
         leftx_current = np.argmax(histogram[:midpoint])
         rightx_current = np.argmax(histogram[midpoint:]) + midpoint
 
-        nwindows = 10
-        margin = 50
+        nwindows = 7
+        margin = 30
         minpix = 50
-        window_height = h // nwindows
+        window_height = int(h * 0.50) // nwindows
 
         nonzero = morphed.nonzero()
         nonzeroy = np.array(nonzero[0])
@@ -82,7 +82,7 @@ class MPCControllerNode(Node):
         left_lane_inds, right_lane_inds = [], []
 
         output = cv2.cvtColor(morphed, cv2.COLOR_GRAY2BGR)
-        for window in range(nwindows):
+        for window in range(1, nwindows):
             y_low = h - (window + 1) * window_height
             y_high = h - window * window_height
             x_left_low = leftx_current - margin
@@ -136,7 +136,7 @@ class MPCControllerNode(Node):
         mid_fit = (left_fit + right_fit) / 2
 
         # 7. Project midpoint back at the bottom of image (y = h)
-        y_eval = h
+        y_eval = h - 25
         # mid_fit = [A, B, C] for Ax^2 + Bx + C
         mid_x = mid_fit[0] * y_eval**2 + mid_fit[1] * y_eval + mid_fit[2]
 
@@ -152,9 +152,9 @@ class MPCControllerNode(Node):
         vel = self.get_parameter("velocity").get_parameter_value().double_value
         cmd = Twist()
         cmd.linear.x = vel
-        cmd.angular.z = self.error_ / 100.0
+        cmd.angular.z = self.error_ / (4 * np.pi)
         self.get_logger().info(f"Lane error: {self.error_:.1f}px")
-        # self.cmd_pub.publish(cmd)
+        self.cmd_pub.publish(cmd)
 
 
 def main(args=None):
