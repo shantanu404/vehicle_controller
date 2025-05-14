@@ -30,7 +30,9 @@ class MPCControllerNode(Node):
         )
 
         # Marker array for lane markers
-        self.lane_points = np.array([])
+        self.left_fit = np.array([0, 0, 0])
+        self.right_fit = np.array([0, 0, 0])
+        self.mid_fit = np.array([0, 0, 0])
 
         # Subscribers and publishers
         self.image_sub = self.create_subscription(
@@ -139,7 +141,7 @@ class MPCControllerNode(Node):
         righty = nonzeroy[right_lane_inds]
 
         # Generate rviz markers for left and right lane
-        bias = 1.75 + window_height / 63.297478
+        bias = 1.3 + window_height / 63.297478
         real_left_x = (w / 2 - leftx) / 53.735893
         real_left_y = (h - lefty) / 63.297478 + bias
         real_right_x = (w / 2 - rightx) / 53.735893
@@ -154,22 +156,21 @@ class MPCControllerNode(Node):
         )
 
         # 6. Fit 2nd-degree (quadratic) polynomials
-        left_fit = np.polyfit(lefty, leftx, 3)
-        right_fit = np.polyfit(righty, rightx, 3)
-        mid_fit = (left_fit + right_fit) / 2
+        self.left_fit = np.polyfit(real_left_y, real_left_x, 3)
+        self.right_fit = np.polyfit(real_right_y, real_right_x, 3)
+        self.mid_fit = (self.left_fit + self.right_fit) / 2
 
         # 7. Project midpoint back at the bottom of image (y = h)
-        y_eval = h - 25
+        y_eval = 1.75
         mid_x = (
-            mid_fit[0] * y_eval**3
-            + mid_fit[1] * y_eval**2
-            + mid_fit[2] * y_eval
-            + mid_fit[3]
+            self.mid_fit[0] * y_eval**3
+            + self.mid_fit[1] * y_eval**2
+            + self.mid_fit[2] * y_eval
+            + self.mid_fit[3]
         )
 
         # 8. Compute error (pixels) relative to image center
-        image_center = w / 2
-        self.error_ = float(image_center - mid_x)
+        self.error_ = mid_x
 
         # 9. Unwarp the output and show it
         output = cv2.warpPerspective(
@@ -183,14 +184,37 @@ class MPCControllerNode(Node):
         vel = self.get_parameter("velocity").get_parameter_value().double_value
         cmd = Twist()
         cmd.linear.x = vel
-        cmd.angular.z = self.error_ / (4 * np.pi)
+        cmd.angular.z = (np.pi / 3) * self.error_
         # self.get_logger().info(f"Lane error: {self.error_:.1f}px")
         self.cmd_pub.publish(cmd)
 
     def marker_timer_callback(self):
         markers = []
 
-        for i, (x, y) in enumerate(self.lane_points):
+        y = np.linspace(0, 5, 10)
+
+        left_lane_x = (
+            self.left_fit[0] * y**3
+            + self.left_fit[1] * y**2
+            + self.left_fit[2] * y
+            + self.left_fit[3]
+        )
+        right_lane_x = (
+            self.right_fit[0] * y**3
+            + self.right_fit[1] * y**2
+            + self.right_fit[2] * y
+            + self.right_fit[3]
+        )
+
+        mid_lane_x = (left_lane_x + right_lane_x) / 2
+
+        left_lane_points = np.stack([y, left_lane_x], axis=1)
+        right_lane_points = np.stack([y, right_lane_x], axis=1)
+        mid_lane_points = np.stack([y, mid_lane_x], axis=1)
+
+        for i, (x, y) in enumerate(
+            np.concatenate([left_lane_points, right_lane_points, mid_lane_points])
+        ):
             marker = Marker()
             marker.header.frame_id = "base_footprint"
             marker.header.stamp = self.get_clock().now().to_msg()
