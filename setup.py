@@ -42,6 +42,7 @@ setup(
     entry_points={
         "console_scripts": [
             "mpc_control = vehicle_controller.mpc_control_node:main",
+            "pid_control = vehicle_controller.pid_control_node:main",
             "odometry_plotter = vehicle_controller.odometry_plotter_node:main",
         ],
     },

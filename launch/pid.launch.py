@@ -14,7 +14,6 @@ def generate_launch_description():
         default_value=PathJoinSubstitution(
             [
                 FindPackageShare("vehicle_controller"),
-                "resources",
                 "worlds",
                 "track00.world.xml",
             ]
@@ -43,15 +42,15 @@ def generate_launch_description():
     )
 
     # Declare the speed argument
-    mpc_speed_arg = DeclareLaunchArgument(
+    pid_speed_arg = DeclareLaunchArgument(
         "velocity", default_value="2.5", description="Set the velocity of vehicle"
     )
 
     # Run pid node
-    mpc_node = Node(
+    pid_node = Node(
         package="vehicle_controller",
         executable="pid_control",
-        name="pid_controller",
+        name="pid_control_node",
         output="screen",
         parameters=[{"velocity": LaunchConfiguration("velocity")}],
     )
@@ -59,8 +58,8 @@ def generate_launch_description():
     # Run odometry plotter
     odom_plotter_node = Node(
         package="vehicle_controller",
-        executable="odometry_plotter.py",
-        name="odometry_plotter",
+        executable="odometry_plotter",
+        name="odometry_plotter_node",
         output="screen",
     )
 
@@ -69,8 +68,8 @@ def generate_launch_description():
             simulation_world_file_arg,
             simulation_headless_arg,
             include_simulation_launch,
-            mpc_speed_arg,
-            mpc_node,
+            pid_speed_arg,
+            pid_node,
             odom_plotter_node,
         ]
     )
