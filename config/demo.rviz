@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /MarkerArray2
         - /MarkerArray2/Topic1
       Splitter Ratio: 0.5
     Tree Height: 385
@@ -174,14 +173,25 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray
       Namespaces:
-        left_lane: true
-        right_lane: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /lane_markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /trajectory_markers
       Value: true
   Enabled: true
   Global Options:
@@ -228,26 +238,21 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz_default_plugins/Orbit
-      Distance: 63.07958984375
+      Angle: 0
+      Class: rviz_default_plugins/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
-      Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.155398428440094
+      Scale: 38.95976638793945
       Target Frame: <Fixed Frame>
-      Value: Orbit (rviz)
-      Yaw: 4.805411338806152
+      Value: TopDownOrtho (rviz_default_plugins)
+      X: 1.5597333908081055
+      Y: -44.6470832824707
     Saved: ~
 Window Geometry:
   Displays:

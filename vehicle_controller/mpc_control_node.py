@@ -5,9 +5,12 @@ import rclpy
 from builtin_interfaces.msg import Duration
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from visualization_msgs.msg import Marker, MarkerArray
+
+from .mpc_optimizer import do_mpc
 
 
 class MPCControllerNode(Node):
@@ -16,8 +19,10 @@ class MPCControllerNode(Node):
         self.declare_parameter("velocity", 2.5)
 
         self.bridge = CvBridge()
-        self.error_ = 0
-        self.frame = None
+        self.velocity = 0.0
+        self.accelaration = 0.0
+        self.steering_angle = 0.0
+        self.debug_images = False
 
         # Hard-coded warp matrix from notebook
         self.mtx = np.array(
@@ -38,39 +43,51 @@ class MPCControllerNode(Node):
         self.image_sub = self.create_subscription(
             Image, "/camera1/image_raw", self.image_callback, 1
         )
+
+        self.odom_subscription = self.create_subscription(
+            Odometry, "/base_pose_ground_truth", self.odom_callback, qos_profile=2
+        )
+
         self.cmd_pub = self.create_publisher(Twist, "cmd_vel", 1)
         self.marker_pub = self.create_publisher(MarkerArray, "lane_markers", 1)
+        self.traj_pub = self.create_publisher(MarkerArray, "trajectory_markers", 1)
 
         # Timer for publishing commands
-        self.create_timer(0.01, self.cmd_timer_callback)
-        self.create_timer(1, self.marker_timer_callback)
+        self.create_timer(0.1, self.cmd_timer_callback)
+        self.create_timer(0.5, self.marker_timer_callback)
 
         # OpenCV windows for debugging
-        for win in ["Original", "HSV_V", "Binary", "Morphed", "Warped", "Windows"]:
-            cv2.namedWindow(win, cv2.WINDOW_NORMAL)
+        if self.debug_images:
+            for win in ["Original", "HSV_V", "Binary", "Morphed", "Warped", "Windows"]:
+                cv2.namedWindow(win, cv2.WINDOW_NORMAL)
 
     def image_callback(self, msg: Image):
         # 1. Convert ROS image to OpenCV BGR and resize
         frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         frame = cv2.resize(frame, (640, 480))
-        cv2.imshow("Original", frame)
+        if self.debug_images:
+            cv2.imshow("Original", frame)
 
         # 2. Perspective warp
         warped = cv2.warpPerspective(frame, self.mtx, (640, 480))
-        cv2.imshow("Warped", warped)
+        if self.debug_images:
+            cv2.imshow("Warped", warped)
 
         # 3. HSV threshold on V channel
         hsv = cv2.cvtColor(warped, cv2.COLOR_BGR2HSV)
         _, _, V = cv2.split(hsv)
-        cv2.imshow("HSV_V", V)
+        if self.debug_images:
+            cv2.imshow("HSV_V", V)
 
         _, binary = cv2.threshold(V, 30, 255, cv2.THRESH_BINARY)
-        cv2.imshow("Binary", binary)
+        if self.debug_images:
+            cv2.imshow("Binary", binary)
 
         # 4. Morphological opening to clean small blobs
         kernel = np.ones((5, 5), np.uint8)
         morphed = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-        cv2.imshow("Morphed", morphed)
+        if self.debug_images:
+            cv2.imshow("Morphed", morphed)
 
         # 5. Sliding-window lane detection
         h, w = morphed.shape
@@ -90,7 +107,8 @@ class MPCControllerNode(Node):
 
         left_lane_inds, right_lane_inds = [], []
 
-        output = warped
+        if self.debug_images:
+            output = warped
         for window in range(1, nwindows):
             y_low = h - (window + 1) * window_height
             y_high = h - window * window_height
@@ -100,12 +118,13 @@ class MPCControllerNode(Node):
             x_right_high = rightx_current + margin
 
             # Draw windows for visualization
-            cv2.rectangle(
-                output, (x_left_low, y_low), (x_left_high, y_high), (0, 255, 0), 2
-            )
-            cv2.rectangle(
-                output, (x_right_low, y_low), (x_right_high, y_high), (255, 0, 0), 2
-            )
+            if self.debug_images:
+                cv2.rectangle(
+                    output, (x_left_low, y_low), (x_left_high, y_high), (0, 255, 0), 2
+                )
+                cv2.rectangle(
+                    output, (x_right_low, y_low), (x_right_high, y_high), (255, 0, 0), 2
+                )
 
             # Identify nonzero pixels in window
             good_left = (
@@ -141,7 +160,7 @@ class MPCControllerNode(Node):
         righty = nonzeroy[right_lane_inds]
 
         # Generate rviz markers for left and right lane
-        bias = 1.3 + window_height / 63.297478
+        bias = window_height / 63.297478
         real_left_x = (w / 2 - leftx) / 53.735893
         real_left_y = (h - lefty) / 63.297478 + bias
         real_right_x = (w / 2 - rightx) / 53.735893
@@ -160,32 +179,41 @@ class MPCControllerNode(Node):
         self.right_fit = np.polyfit(real_right_y, real_right_x, 3)
         self.mid_fit = (self.left_fit + self.right_fit) / 2
 
-        # 7. Project midpoint back at the bottom of image (y = h)
-        y_eval = 1.75
-        mid_x = (
-            self.mid_fit[0] * y_eval**3
-            + self.mid_fit[1] * y_eval**2
-            + self.mid_fit[2] * y_eval
-            + self.mid_fit[3]
+        # 7. Given the state currently is [0, 0, self.velocity, 0] figure out next 1 seconds in 0.1 second interval
+        (accelaration, steering_angle), trajectory = do_mpc(
+            self.mid_fit, np.array([0.0, 0.0, 0.0, self.velocity]), 5, 0.1
         )
 
-        # 8. Compute error (pixels) relative to image center
-        self.error_ = mid_x
+        self.trajectory = trajectory
+        self.accelaration = accelaration
+        self.steering_angle = steering_angle
 
         # 9. Unwarp the output and show it
-        output = cv2.warpPerspective(
-            output, np.linalg.inv(self.mtx), (640, 480), flags=cv2.INTER_LINEAR
+        if self.debug_images:
+            output = cv2.warpPerspective(
+                output, np.linalg.inv(self.mtx), (640, 480), flags=cv2.INTER_LINEAR
+            )
+            cv2.imshow("Windows", output)
+            cv2.waitKey(1)
+
+    def odom_callback(self, msg: Odometry):
+        self.velocity = np.linalg.norm(
+            (
+                msg.twist.twist.linear.x,
+                msg.twist.twist.linear.y,
+                msg.twist.twist.linear.z,
+            )
         )
-        cv2.imshow("Windows", output)
-        cv2.waitKey(1)
 
     def cmd_timer_callback(self):
         # Publish control command
-        vel = self.get_parameter("velocity").get_parameter_value().double_value
+        vel = self.velocity + self.accelaration * 0.1
         cmd = Twist()
         cmd.linear.x = vel
-        cmd.angular.z = (np.pi / 3) * self.error_
-        # self.get_logger().info(f"Lane error: {self.error_:.1f}px")
+        cmd.angular.z = self.steering_angle
+        self.get_logger().info(
+            f"velocity: {vel}, accelaration: {self.accelaration}, angle: {self.steering_angle}"
+        )
         self.cmd_pub.publish(cmd)
 
     def marker_timer_callback(self):
@@ -216,7 +244,7 @@ class MPCControllerNode(Node):
             np.concatenate([left_lane_points, right_lane_points, mid_lane_points])
         ):
             marker = Marker()
-            marker.header.frame_id = "base_footprint"
+            marker.header.frame_id = "front_axle"
             marker.header.stamp = self.get_clock().now().to_msg()
 
             marker.ns = "lane_marker"
@@ -239,9 +267,32 @@ class MPCControllerNode(Node):
             marker.lifetime = Duration(seconds=0)
 
             markers.append(marker)
-
         marker_array = MarkerArray(markers=markers)
         self.marker_pub.publish(marker_array)
+
+        markers.clear()
+        for i, point in enumerate(self.trajectory):
+            marker = Marker()
+            marker.header.frame_id = "front_axle"
+            marker.header.stamp = self.get_clock().now().to_msg()
+            marker.ns = "trajectory_marker"
+            marker.id = len(markers)
+            marker.type = Marker.SPHERE
+            marker.pose.position.x = point[0]
+            marker.pose.position.y = point[1]
+            marker.pose.orientation.w = 1.0
+            marker.scale.x = 0.1
+            marker.scale.y = 0.1
+            marker.scale.z = 0.1
+            marker.color.r = 0.0
+            marker.color.g = 0.0
+            marker.color.b = 1.0
+            marker.color.a = 1.0
+            marker.lifetime = Duration(seconds=1)
+            markers.append(marker)
+
+        marker_array = MarkerArray(markers=markers)
+        self.traj_pub.publish(marker_array)
 
 
 def main(args=None):

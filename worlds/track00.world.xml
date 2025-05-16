@@ -27,7 +27,7 @@
     <y_max>64</y_max>
     <z>0.00</z>
 
-    <texture>track01.png</texture>
+    <texture>track00.png</texture>
     <texture_size_x>128.0</texture_size_x>
     <texture_size_y>128.0</texture_size_y>
   </element>
@@ -44,7 +44,7 @@
   <!-- =============================
        Vehicle classes definition
        ============================= -->
-  <include file="../definitions/ackermann.vehicle.xml" />
+  <include file="../description/ackermann.vehicle.xml" />
 
   <!-- ========================
        Vehicle(s) definition
@@ -53,10 +53,20 @@
     <init_pose>0 -46 135</init_pose>  <!-- In global coords: x,y, yaw(deg) -->
 
     <!-- Sensors -->
-    <include file="../definitions/camera.sensor.xml"
+    <include file="../description/camera.sensor.xml"
       sensor_x="2.00" sensor_z="0.83" sensor_roll="-120"
       sensor_period_sec="0.10"
     />
+
+    <include file="../description/camera.sensor.xml"
+      sensor_name='front_axle'
+      sensor_x="1.3"
+      sensor_z="0.00"
+      sensor_roll="0.00"
+      sensor_pitch="0.00"
+      sensor_yaw="0.00"
+    />
+
   </vehicle>
 
 </mvsim_world>

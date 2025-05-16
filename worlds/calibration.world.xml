@@ -44,7 +44,7 @@
   <!-- =============================
        Vehicle classes definition
        ============================= -->
-  <include file="../definitions/ackermann.vehicle.xml" />
+  <include file="../description/ackermann.vehicle.xml" />
 
   <!-- ========================
        Vehicle(s) definition
@@ -53,7 +53,7 @@
     <init_pose>0 0 0</init_pose>  <!-- In global coords: x,y, yaw(deg) -->
 
     <!-- Sensors -->
-    <include file="../definitions/camera.sensor.xml"
+    <include file="../description/camera.sensor.xml"
       sensor_x="2.00" sensor_z="0.83" sensor_roll="-120"
       sensor_period_sec="0.10"
     />
